@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # create_pmtiles.sh
 # ---------------------------------------------------------------------------
-# Converts the neighborhood density GeoJSON from Lesson 2.3 into a PMTiles
-# file for use with MapLibre GL JS.
+# Converts the neighborhood density GeoParquet produced by ModernGIS2's
+# analysis notebook into a PMTiles file for use with MapLibre GL JS.
 #
 # PMTiles is a single-file archive of vector tiles — no tile server needed.
 # The browser fetches only the tiles it needs using HTTP range requests.
 #
-# Input:   ../2.3-sql-analysis/output/neighborhood_density.geojson
-#          (197 MultiPolygon features with hydrant density data)
+# Input:   data/processed/hydrant_density.parquet
+#          (GeoParquet: residential NTAs with hydrant_count, area_km2,
+#          hydrants_per_km2 — produced by ModernGIS2/analysis.ipynb)
 #
 # Output:  neighborhood_density.pmtiles
 #
@@ -17,14 +18,21 @@
 #     macOS:   brew install tippecanoe
 #     Ubuntu:  see https://github.com/felt/tippecanoe#installation
 #     Docker:  docker run -v $(pwd):/data ghcr.io/felt/tippecanoe:latest ...
+#   - ogr2ogr installed (part of GDAL, converts GeoParquet -> GeoJSON)
+#     macOS:   brew install gdal
+#     Ubuntu:  sudo apt install gdal-bin
 #
 # Usage:   bash create_pmtiles.sh
 # ---------------------------------------------------------------------------
 
 set -e
 
-GEOJSON_INPUT="../../part2-languages/2.3-sql-analysis/output/neighborhood_density.geojson"
+PARQUET_INPUT="data/processed/hydrant_density.parquet"
 OUTPUT="neighborhood_density.pmtiles"
+TMP_GEOJSON="$(mktemp).geojson"
+
+cleanup() { rm -f "$TMP_GEOJSON"; }
+trap cleanup EXIT
 
 # --- Check prerequisites --------------------------------------------------
 if ! command -v tippecanoe &> /dev/null; then
@@ -37,17 +45,30 @@ if ! command -v tippecanoe &> /dev/null; then
     exit 1
 fi
 
-# --- Check input file -----------------------------------------------------
-if [ ! -f "$GEOJSON_INPUT" ]; then
-    echo "❌ Input file not found: $GEOJSON_INPUT"
-    echo "   Make sure you completed Lesson 2.3 and the GeoJSON export."
-    echo "   Expected: part2-languages/2.3-sql-analysis/output/neighborhood_density.geojson"
+if ! command -v ogr2ogr &> /dev/null; then
+    echo "❌ ogr2ogr is not installed (part of GDAL)."
+    echo ""
+    echo "Install it:"
+    echo "  macOS:  brew install gdal"
+    echo "  Ubuntu: sudo apt install gdal-bin"
     exit 1
 fi
 
-echo "📁 Input:  $GEOJSON_INPUT"
+# --- Check input file -----------------------------------------------------
+if [ ! -f "$PARQUET_INPUT" ]; then
+    echo "❌ Input file not found: $PARQUET_INPUT"
+    echo "   Run ModernGIS2/analysis.ipynb (or analysis.sql) first, then copy"
+    echo "   its output here: cp ../ModernGIS2/data/processed/hydrant_density.parquet data/processed/"
+    exit 1
+fi
+
+echo "📁 Input:  $PARQUET_INPUT"
 echo "📦 Output: $OUTPUT"
 echo ""
+
+# --- Convert GeoParquet to GeoJSON for tippecanoe --------------------------
+echo "🔄 Converting GeoParquet to GeoJSON..."
+ogr2ogr -f GeoJSON "$TMP_GEOJSON" "$PARQUET_INPUT"
 
 # --- Convert to PMTiles ---------------------------------------------------
 echo "🔄 Running tippecanoe..."
@@ -69,7 +90,7 @@ tippecanoe \
     --coalesce-densest-as-needed \
     -o "$OUTPUT" \
     --force \
-    "$GEOJSON_INPUT"
+    "$TMP_GEOJSON"
 
 # --- Verify ---------------------------------------------------------------
 echo ""

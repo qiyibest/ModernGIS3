@@ -16,7 +16,7 @@ underserved relative to their area?
 
 - NYC Neighborhoods: 262 polygons (Source: NYC Open Data)
 - NYC Fire Hydrants: 109,725 points (Source: NYC Open Data)
-- Density was computed in ModernGIS2 ([repo link]) using PostGIS and GeoPandas.
+- Density was computed in [ModernGIS2](https://github.com/qiyibest/ModernGIS-2) using PostGIS and GeoPandas.
 
 ## The technology choices
 
@@ -33,20 +33,21 @@ Total monthly cost: $0. Total servers running: 0.
 ## How to reproduce
 
 \`\`\`bash
-git clone https://github.com/qiyibest/nyc-hydrant-map.git
-cd nyc-hydrant-map
-./convert.sh    # rebuilds the .pmtiles from data/raw/*.parquet
+git clone https://github.com/qiyibest/ModernGIS3.git
+cd ModernGIS3
+./create_pmtiles.sh    # rebuilds the .pmtiles from data/processed/hydrant_density.parquet
 python3 -m http.server 8000   # then open localhost:8000
 \`\`\`
 
 ## What I learned
 
-This workflow bypass the tranditional webgis developments in standing up server for hosing the GIS database and websites. 
-It significantly streamlines the system configuration.   
+This workflow bypasses traditional WebGIS development, which requires standing up a
+server to host the GIS database and serve the site. It significantly streamlines the
+system configuration.
 
 ## Stack
 
-- MapLibre GL JS 4.5.2
-- PMTiles 3.2.0
+- MapLibre GL JS 5.21.0
+- PMTiles 4.4.0
 - tippecanoe (felt fork)
 - GitHub Pages
